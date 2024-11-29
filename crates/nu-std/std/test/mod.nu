@@ -5,6 +5,15 @@ use color_scheme.nu
 
 # nu -c "use std/test; (test .)"
 
+# lists only the suites for now
+export def list [
+    --path: path # the base path to look for tests (defaults to PWD)
+] {
+    let path = $path | default $env.PWD
+    let suites = discover list-test-suites $path
+    $suites
+}
+
 # run the nu-test runner
 export def main [
     --path: path # the base path to look for tests (defaults to PWD)
