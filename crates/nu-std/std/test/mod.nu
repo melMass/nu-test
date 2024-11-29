@@ -5,12 +5,13 @@ use color_scheme.nu
 
 # nu -c "use std/test; (test .)"
 
+# run the nu-test runner
 export def main [
-    --path: path
-    --match-suites: string
-    --match-tests: string
-    --threads: int
-    --no-color
+    --path: path # the base path to look for tests (defaults to PWD)
+    --match-suites: string # a glob to match against suite names (defaults to ".*")
+    --match-tests: string # (??) the name of the methods to discover as test (defaults to ".*") 
+    --threads: int # defaults to 0 (see https://docs.rs/rayon/latest/rayon/struct.ThreadPoolBuilder.html#method.num_threads) 
+    --no-color # disable color in outputs
     --fail
 ] {
     # TODO error messages are bad when these are misconfigured
