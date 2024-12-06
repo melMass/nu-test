@@ -29,7 +29,7 @@ def run-suite [reporter: record, threads: int, suite: string, path: string, test
         ^$nu.current-exe
             --no-config-file
             --commands $"
-                source std/test/runner.nu
+                source /Users/melmassadian/.dot/env/extra-modules/test/runner.nu
                 source ($path)
                 plan-execute-suite-emit ($suite) ($threads) ($plan_data)
             "

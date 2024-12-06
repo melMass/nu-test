@@ -8,7 +8,7 @@ use color_scheme.nu
 # lists only the suites for now
 export def list [
     --path: path # the base path to look for tests (defaults to PWD)
-] {
+] : nothing -> table<record<name: string, path: string, tests: table<name: string, type: string>>  {
     let path = $path | default $env.PWD
     let suites = discover list-test-suites $path
     $suites
@@ -18,7 +18,7 @@ export def list [
 export def main [
     --path: path # the base path to look for tests (defaults to PWD)
     --match-suites: string # a glob to match against suite names (defaults to ".*")
-    --match-tests: string # (??) the name of the methods to discover as test (defaults to ".*") 
+    --match-tests: string # the name of the methods to discover as test (defaults to "test *") 
     --threads: int # defaults to 0 (see https://docs.rs/rayon/latest/rayon/struct.ThreadPoolBuilder.html#method.num_threads) 
     --no-color # disable color in outputs
     --fail
