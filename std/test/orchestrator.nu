@@ -1,4 +1,4 @@
-use std assert
+use std/assert
 
 # This script generates the test suite data and embeds a runner into a nushell sub-process to execute.
 
@@ -31,18 +31,17 @@ def run-suite [reporter: record, threads: int, suite: string, path: string, test
             --commands $"
                 source /Users/melmassadian/.dot/env/extra-modules/test/runner.nu
                 source ($path)
-                plan-execute-suite-emit ($suite) ($threads) ($plan_data)
+                nutest-299792458-execute-suite ($suite) ($threads) ($plan_data)
             "
     ) | complete
 
     # Useful for understanding event stream
     #print $'($plan_data)'
-    #print $"($result)"
 
     if $result.exit_code == 0 {
         for line in ($result.stdout | lines) {
-            let data = $line | from nuon
-            $data | process-event $reporter
+            let event = $line | decode-event
+            $event | process-event $reporter
         }
     } else {
         # This is only triggered on a suite-level failure so not caught by the embedded runner
@@ -50,9 +49,13 @@ def run-suite [reporter: record, threads: int, suite: string, path: string, test
         for test in $tests {
             let template = { timestamp: (date now | format date "%+"), suite: $suite, test: $test.name }
             $template | merge { type: "result", payload: { status: "FAIL" } } | process-event $reporter
-            $template | merge { type: "error", payload: { lines: [$result.stderr] } } | process-event $reporter
+            $template | merge { type: "error", payload: { data: [$result.stderr] } } | process-event $reporter
         }
     }
+}
+
+def decode-event []: string -> record {
+    $in | decode base64 | decode | from nuon
 }
 
 export def create-suite-plan-data [tests: table<name: string, type: string>]: nothing -> string {
@@ -77,11 +80,13 @@ def process-event [reporter: record] {
             do $reporter.fire-result $message
         }
         { type: "output" } => {
-            let message = $template | merge { type: output, lines: $event.payload.lines }
+            let lines = $event.payload.data | into string
+            let message = $template | merge { type: output, lines: $lines }
             do $reporter.fire-output $message
         }
         { type: "error" } => {
-            let message = $template | merge { type: error, lines: $event.payload.lines }
+            let lines = $event.payload.data | into string
+            let message = $template | merge { type: error, lines: $lines }
             do $reporter.fire-output $message
         }
     }

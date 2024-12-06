@@ -1,4 +1,4 @@
-use std assert
+use std/assert
 use ../../std/test/orchestrator.nu [
     create-suite-plan-data
     run-suites
@@ -29,7 +29,7 @@ def trim []: string -> string {
     $in | str replace --all --regex '[\n\r ]+' ' '
 }
 
-#[before-all]
+# [before-all]
 # Since we only have one database it needs to be created once before all tests.
 # We also need to ensure we narrow down results to the unique ones used in each test.
 def reporter-setup []: nothing -> record {
@@ -51,7 +51,7 @@ def nop-color-scheme []: nothing -> closure {
     }
 }
 
-#[before-each]
+# [before-each]
 def setup-temp-dir []: nothing -> record {
     let temp = mktemp --tmpdir --directory
 
@@ -60,19 +60,19 @@ def setup-temp-dir []: nothing -> record {
     }
 }
 
-#[after-each]
+# [after-each]
 def cleanup [] {
     let context = $in
     rm --recursive $context.temp
 }
 
-#[after-all]
+# [after-all]
 def reporter-complete [] {
     let reporter = $in.reporter
     do $reporter.complete
 }
 
-#[test]
+# [test]
 def run-suite-with-no-tests [] {
     let context = $in
     let reporter = $context.reporter
@@ -86,7 +86,7 @@ def run-suite-with-no-tests [] {
     assert equal $results []
 }
 
-#[test]
+# [test]
 def run-suite-with-passing-test [] {
     let context = $in
     let temp = $context.temp
@@ -105,7 +105,7 @@ def run-suite-with-passing-test [] {
     ]
 }
 
-#[test]
+# [test]
 def run-suite-with-ignored-test [] {
     let context = $in
     let temp = $context.temp
@@ -124,7 +124,7 @@ def run-suite-with-ignored-test [] {
     ]
 }
 
-#[test]
+# [test]
 def run-suite-with-broken-test [] {
     let context = $in
     let temp = $context.temp
@@ -147,7 +147,7 @@ def run-suite-with-broken-test [] {
     assert str contains $output "Missing required positional argument"
 }
 
-#[test]
+# [test]
 def run-suite-with-missing-test [] {
     let context = $in
     let temp = $context.temp
@@ -170,7 +170,7 @@ def run-suite-with-missing-test [] {
     assert str contains $output "`missing-test` is neither a Nushell built-in or a known external command"
 }
 
-#[test]
+# [test]
 def run-suite-with-failing-test [] {
     let context = $in
     let temp = $context.temp
@@ -192,7 +192,7 @@ def run-suite-with-failing-test [] {
     assert str contains $output "These are not equal."
 }
 
-#[test]
+# [test]
 def run-suite-with-custom-error [] {
     let context = $in
     let temp = $context.temp
@@ -212,7 +212,7 @@ def run-suite-with-custom-error [] {
     ]
 }
 
-#[test]
+# [test]
 def run-suite-with-multiple-tests [] {
     let context = $in
     let temp = $context.temp
@@ -236,7 +236,7 @@ def run-suite-with-multiple-tests [] {
     ]
 }
 
-#[test]
+# [test]
 def run-multiple-suites [] {
     let context = $in
     let temp = $context.temp
@@ -257,7 +257,7 @@ def run-multiple-suites [] {
     ] | sort-by suite test)
 }
 
-#[test]
+# [test]
 def run-test-with-output-and-error-lines [] {
     let context = $in
     let temp = $context.temp
@@ -274,6 +274,33 @@ def run-test-with-output-and-error-lines [] {
             output: "1\n2\n3\n4"
         }
     ]
+}
+
+# [test]
+# This test is to ensure that even though we get multiple results for a test,
+# (both a PASS then a FAIL) the end result is just a FAIL
+def after-all-failure-should-mark-all-failed [] {
+    let context = $in
+    let temp = $context.temp
+
+    mut suite = create-suite $temp "suite"
+    let suite = "assert equal 1 1" | append-test $temp $suite "test1"
+    let suite = "assert equal 1 1" | append-test $temp $suite "test2"
+    let suite = "assert equal 1 2" | append-test $temp $suite "after-all" --type "after-all"
+    let results = [ $suite ] | test-run $context | reject output
+
+    assert equal $results ([
+        {
+            suite: "suite"
+            test: "test1"
+            result: "FAIL"
+        }
+        {
+            suite: "suite"
+            test: "test2"
+            result: "FAIL"
+        }
+    ] | sort-by test)
 }
 
 
@@ -296,7 +323,7 @@ def create-suite [temp: string, suite: string]: nothing -> record {
     let path = $temp | path join $"($suite).nu"
 
     $"
-        use std assert
+        use std/assert
     " | save $path
 
     {

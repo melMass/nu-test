@@ -3,27 +3,18 @@ use orchestrator.nu
 use reporter_table.nu
 use color_scheme.nu
 
-# nu -c "use std/test; (test .)"
+# nu -c "use std/test; test"
 
-# lists only the suites for now
-export def list [
-    --path: path # the base path to look for tests (defaults to PWD)
-] : nothing -> table<record<name: string, path: string, tests: table<name: string, type: string>>  {
-    let path = $path | default $env.PWD
-    let suites = discover list-test-suites $path
-    $suites
-}
-
-# run the nu-test runner
+# Discover and run annotated test commands.
 export def main [
-    --path: path # the base path to look for tests (defaults to PWD)
-    --match-suites: string # a glob to match against suite names (defaults to ".*")
-    --match-tests: string # the name of the methods to discover as test (defaults to "test *") 
-    --threads: int # defaults to 0 (see https://docs.rs/rayon/latest/rayon/struct.ThreadPoolBuilder.html#method.num_threads) 
-    --no-color # disable color in outputs
-    --fail
-] {
-    # TODO error messages are bad when these are misconfigured
+    --path: path           # Location of tests (defaults to current directory)
+    --match-suites: string # Regular expression to match against suite names (defaults to all)
+    --match-tests: string  # Regular expression to match against test names (defaults to all)
+    --threads: int         # Number of threads used to run tests (defaults to automatic (zero))
+    --no-color             # Disable colour output to allow easier processing of test results
+    --fail                 # Print results and exit with non-zero status if any tests fail (useful for CI/CD systems)
+]: nothing -> table<suite: string, test: string, result: string, output: string> {
+
     let path = $path | default $env.PWD
     let suite = $match_suites | default ".*"
     let test = $match_tests | default ".*"
@@ -39,13 +30,13 @@ export def main [
     do $reporter.start
     $filtered | orchestrator run-suites $reporter $threads
     let results = do $reporter.results
-    let failure = $results | where result =~ FAIL | is-not-empty
+    let success = do $reporter.success
     do $reporter.complete
 
     # To reflect the exit code we need to print the results instead
     if ($fail) {
         print $results
-        exit (if $failure { 1 } else { 0 })
+        exit (if $success { 0 } else { 1 })
     } else {
         $results
     }

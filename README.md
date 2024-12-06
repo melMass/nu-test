@@ -12,6 +12,77 @@ The hope is that this runner will be accepted into the Nushell standard library 
 
 Hopefully this project has been archived by the time you read this!
 
+## Writing Tests
+
+**nu-test** uses command description as a tag system for tests, test discovery will ignore non-tagged commands.
+For now it support:
+| tag | description |
+| - | - |
+| **\[test\]** | this is the main tag to annotate tests.| 
+| **\[before-all\]** | this is run once before all tests.|
+| **\[before-each\]** | this is run before each test.|
+| **\[after-all\]** | this is run once before all tests.|
+| **\[after-each\]** | this is run after each test.|
+| **\[ignore\]** | ignores the test but still collects it, similar to `todo` in other test runners.|
+
+For example:
+
+```nuhshell
+use std assert
+
+#[before-each]
+def setup [] {
+  print "before each"
+  {
+    data: "xxx"
+  }
+}
+
+#[test]
+def "some-data is xxx" [] {
+  let context = $in
+  print $"Running test A: ($context.data)"
+  assert equal "xxx" $context.data
+}
+
+#[test]
+def "is one equal one" [] {
+  print $"Running test B: ($in.data)"
+  assert equal 1 1
+}
+
+#[test]
+def "is two equal two" [] {
+  print $"Running test C: ($in.data)"
+  assert equal 2 2
+}
+
+#[after-each]
+def cleanup [] {
+  let context = $in
+  print "after each"
+  print $context
+}```
+
+Will return:
+```
+╭───────────┬──────────────────┬────────┬─────────────────────╮
+│   suite   │       test       │ result │       output        │
+├───────────┼──────────────────┼────────┼─────────────────────┤
+│ test_base │ is one equal one │ PASS   │ before each         │
+│           │                  │        │ Running test B: xxx │
+│           │                  │        │ after each          │
+│           │                  │        │ {data: xxx}         │
+│ test_base │ is two equal two │ PASS   │ before each         │
+│           │                  │        │ Running test C: xxx │
+│           │                  │        │ after each          │
+│           │                  │        │ {data: xxx}         │
+│ test_base │ some-data is xxx │ PASS   │ before each         │
+│           │                  │        │ Running test A: xxx │
+│           │                  │        │ after each          │
+│           │                  │        │ {data: xxx}         │
+╰───────────┴──────────────────┴────────┴─────────────────────╯
+```
 
 ## Current Features
 
@@ -46,20 +117,18 @@ In normal operation the tests will be run and the results will be returned as a 
 test --fail
 ```
 
-## Expected Features 
-
-- Resolve TODOs
-
 ## Roadmap
 
-- Test report in standard format (cargo test JSON or nextest / JUnit XML).
-- Generate test coverage.
+- List tests without running them.
+- Test report in standard format (cargo test JSON or nextest / JUnit XML)
+- Generate test coverage (in llvm-cov format to allow combining with Nushell coverage)
 - Allow custom reporters
   - Also document use of store to translate from event to collected data.
 
-## Possible Future Enhancements
+## Future Ideas
 
-- List tests without running them.
+- More sophisticated change display rather than simple assertion module output, e.g. differences in records and tables, perhaps displayed as tables
+- Fluent assertion module with pluggable matchers.
 - Test timing.
 - Funky dynamic terminal UI.
 - Exclusions of suite and/or tests.
@@ -67,7 +136,10 @@ test --fail
 - Optionally allow running ignored tests.
 - Stream test results. Each suite is run in a separate nu process via `complete` and therefore each suite's results are not reported until the whole suite completed. There are some limitations here due to Nushell not being able to run processes concurrently. However, we may be able to stream the events and avoid the `complete` command to resolve this. This is ideally required for the event-based terminal UI.
 - Per-suite concurrency control (e.g. `#[sequential]` or `#[disable-concurrency]` annotation). This would also avoid the need for separate test_store_success suits and use of subshells in own tests.
-
+- There is some simplicity in the current design that means after-each processing may not happen if before commands fail:
+  - Currently, a test will be marked as failed on the first before-each that fails, the test will not be run and neither will the after-each. So a before-each that creates temporary files before a failure will not be removed.   
+  - Similarly, execution will stop on the first after-each that fails.
+  - We could try to accumulate as much context as possible, but it doesn't seem worth it.
 
 ## Alternatives
 

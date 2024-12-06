@@ -1,4 +1,4 @@
-use std assert
+use std/assert
 
 # To avoid collisions with the database, we run each test  in a subshell.
 
@@ -116,8 +116,6 @@ def with-specific-suite [] {
         { suite: test_1, test: test_foo, result: "PASS", output: "oof" }
     ]
 }
-
-# TODO passing bad flag to testing corrupts output capture
 
 #[test]
 def exit-on-fail-with-passing-tests [] {
